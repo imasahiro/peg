@@ -378,7 +378,7 @@ static char *header= "\
 #include <string.h>\n\
 ";
 
-            static char *preamble= "\
+static char *preamble= "\
 #ifndef YY_MALLOC\n\
 #define YY_MALLOC(C, N)		malloc(N)\n\
 #endif\n\
@@ -426,39 +426,39 @@ static char *header= "\
 #ifndef YY_STACK_SIZE\n\
 #define YY_STACK_SIZE 128\n\
 #endif\n\
-            \n\
+\n\
 #ifndef YY_BUFFER_SIZE\n\
 #define YY_BUFFER_SIZE 1024\n\
 #endif\n\
-            \n\
+\n\
 #ifndef YY_PART\n\
-            \n\
-            typedef struct _yycontext yycontext;\n\
-            typedef void (*yyaction)(yycontext *yy, char *yytext, int yyleng);\n\
-            typedef struct _yythunk { int begin, end;  yyaction  action;  struct _yythunk *next; } yythunk;\n\
-            \n\
-            struct _yycontext {\n\
-                char     *__buf;\n\
-                int       __buflen;\n\
-                int       __pos;\n\
-                int       __limit;\n\
-                char     *__text;\n\
-                int       __textlen;\n\
-                int       __begin;\n\
-                int       __end;\n\
-                int       __textmax;\n\
-                yythunk  *__thunks;\n\
-                int       __thunkslen;\n\
-                int       __thunkpos;\n\
-                YYSTYPE   __;\n\
-                YYSTYPE  *__val;\n\
-                YYSTYPE  *__vals;\n\
-                int       __valslen;\n\
+\n\
+typedef struct _yycontext yycontext;\n\
+typedef void (*yyaction)(yycontext *yy, char *yytext, int yyleng);\n\
+typedef struct _yythunk { int begin, end;  yyaction  action;  struct _yythunk *next; } yythunk;\n\
+\n\
+struct _yycontext {\n\
+    char     *__buf;\n\
+    int       __buflen;\n\
+    int       __pos;\n\
+    int       __limit;\n\
+    char     *__text;\n\
+    int       __textlen;\n\
+    int       __begin;\n\
+    int       __end;\n\
+    int       __textmax;\n\
+    yythunk  *__thunks;\n\
+    int       __thunkslen;\n\
+    int       __thunkpos;\n\
+    YYSTYPE   __;\n\
+    YYSTYPE  *__val;\n\
+    YYSTYPE  *__vals;\n\
+    int       __valslen;\n\
 #ifdef YY_CTX_MEMBERS\n\
-                YY_CTX_MEMBERS\n\
+    YY_CTX_MEMBERS\n\
 #endif\n\
-            };\n\
-            \n\
+};\n\
+\n\
 #ifdef YY_CTX_LOCAL\n\
 #define YY_CTX_PARAM_	yycontext *yyctx,\n\
 #define YY_CTX_PARAM	yycontext *yyctx\n\
@@ -477,8 +477,8 @@ static char *header= "\
 #define YY_CTX_PARAM\n\
 #define YY_CTX_ARG_\n\
 #define YY_CTX_ARG\n\
-            yycontext _yyctx= { 0, 0 };\n\
-            yycontext *yyctx= &_yyctx;\n\
+    yycontext _yyctx= { 0, 0 };\n\
+    yycontext *yyctx= &_yyctx;\n\
 #ifndef YY_INPUT\n\
 #define YY_INPUT(buf, result, max_size)			\\\n\
 {							\\\n\
@@ -488,8 +488,8 @@ static char *header= "\
 }\n\
 #endif\n\
 #endif\n\
-            \n\
-            YY_LOCAL(int) yyrefill(yycontext *yy)\n\
+\n\
+YY_LOCAL(int) yyrefill(yycontext *yy)\n\
 {\n\
     int yyn;\n\
     while (yy->__buflen - yy->__pos < 512)\n\
@@ -506,15 +506,15 @@ static char *header= "\
     yy->__limit += yyn;\n\
     return 1;\n\
 }\n\
-            \n\
-            YY_LOCAL(int) yymatchDot(yycontext *yy)\n\
+\n\
+YY_LOCAL(int) yymatchDot(yycontext *yy)\n\
 {\n\
     if (yy->__pos >= yy->__limit && !yyrefill(yy)) return 0;\n\
     ++yy->__pos;\n\
     return 1;\n\
 }\n\
-            \n\
-            YY_LOCAL(int) yymatchChar(yycontext *yy, int c)\n\
+\n\
+YY_LOCAL(int) yymatchChar(yycontext *yy, int c)\n\
 {\n\
     if (yy->__pos >= yy->__limit && !yyrefill(yy)) return 0;\n\
     if ((unsigned char)yy->__buf[yy->__pos] == c)\n\
@@ -526,8 +526,8 @@ static char *header= "\
     yyprintf((stderr, \"  fail yymatchChar(yy, %c) @ %s\\n\", c, yy->__buf+yy->__pos));\n\
     return 0;\n\
 }\n\
-            \n\
-            YY_LOCAL(int) yymatchString(yycontext *yy, const char *s)\n\
+\n\
+YY_LOCAL(int) yymatchString(yycontext *yy, const char *s)\n\
 {\n\
     int yysav= yy->__pos;\n\
     while (*s)\n\
@@ -543,8 +543,8 @@ static char *header= "\
     }\n\
     return 1;\n\
 }\n\
-            \n\
-            YY_LOCAL(int) yymatchClass(yycontext *yy, unsigned char *bits)\n\
+\n\
+YY_LOCAL(int) yymatchClass(yycontext *yy, unsigned char *bits)\n\
 {\n\
     int c;\n\
     if (yy->__pos >= yy->__limit && !yyrefill(yy)) return 0;\n\
@@ -558,8 +558,8 @@ static char *header= "\
     yyprintf((stderr, \"  fail yymatchClass @ %s\\n\", yy->__buf+yy->__pos));\n\
     return 0;\n\
 }\n\
-            \n\
-            YY_LOCAL(void) yyDo(yycontext *yy, yyaction action, int begin, int end)\n\
+\n\
+YY_LOCAL(void) yyDo(yycontext *yy, yyaction action, int begin, int end)\n\
 {\n\
     while (yy->__thunkpos >= yy->__thunkslen)\n\
     {\n\
@@ -571,8 +571,8 @@ static char *header= "\
     yy->__thunks[yy->__thunkpos].action= action;\n\
     ++yy->__thunkpos;\n\
 }\n\
-            \n\
-            YY_LOCAL(int) yyText(yycontext *yy, int begin, int end)\n\
+\n\
+YY_LOCAL(int) yyText(yycontext *yy, int begin, int end)\n\
 {\n\
     int yyleng= end - begin;\n\
     if (yyleng <= 0)\n\
@@ -589,8 +589,8 @@ static char *header= "\
     yy->__text[yyleng]= '\\0';\n\
     return yyleng;\n\
 }\n\
-            \n\
-            YY_LOCAL(void) yyDone(yycontext *yy)\n\
+\n\
+YY_LOCAL(void) yyDone(yycontext *yy)\n\
 {\n\
     int pos;\n\
     for (pos= 0;  pos < yy->__thunkpos;  ++pos)\n\
@@ -602,8 +602,8 @@ static char *header= "\
     }\n\
     yy->__thunkpos= 0;\n\
 }\n\
-            \n\
-            YY_LOCAL(void) yyCommit(yycontext *yy)\n\
+\n\
+YY_LOCAL(void) yyCommit(yycontext *yy)\n\
 {\n\
     if ((yy->__limit -= yy->__pos))\n\
     {\n\
@@ -613,8 +613,8 @@ static char *header= "\
     yy->__end -= yy->__pos;\n\
     yy->__pos= yy->__thunkpos= 0;\n\
 }\n\
-            \n\
-            YY_LOCAL(int) yyAccept(yycontext *yy, int tp0)\n\
+\n\
+YY_LOCAL(int) yyAccept(yycontext *yy, int tp0)\n\
 {\n\
     if (tp0)\n\
     {\n\
@@ -628,8 +628,8 @@ static char *header= "\
     }\n\
     return 1;\n\
 }\n\
-            \n\
-            YY_LOCAL(void) yyPush(yycontext *yy, char *text, int count)\n\
+\n\
+YY_LOCAL(void) yyPush(yycontext *yy, char *text, int count)\n\
 {\n\
     yy->__val += count;\n\
     while (yy->__valslen <= yy->__val - yy->__vals)\n\
@@ -640,22 +640,22 @@ static char *header= "\
         yy->__val= yy->__vals + offset;\n\
     }\n\
 }\n\
-            YY_LOCAL(void) yyPop(yycontext *yy, char *text, int count)   { yy->__val -= count; }\n\
-            YY_LOCAL(void) yySet(yycontext *yy, char *text, int count)   { yy->__val[count]= yy->__; }\n\
-            \n\
+YY_LOCAL(void) yyPop(yycontext *yy, char *text, int count)   { yy->__val -= count; }\n\
+YY_LOCAL(void) yySet(yycontext *yy, char *text, int count)   { yy->__val[count]= yy->__; }\n\
+\n\
 #endif /* YY_PART */\n\
-            \n\
+\n\
 #define	YYACCEPT	yyAccept(yy, yythunkpos0)\n\
-            \n\
-            ";
+\n\
+";
 
-            static char *footer= "\n\
-                                  \n\
+static char *footer = "\n\
+\n\
 #ifndef YY_PART\n\
-                                  \n\
-                                  typedef int (*yyrule)(yycontext *yy);\n\
-                                  \n\
-                                  YY_PARSE(int) YYPARSEFROM(YY_CTX_PARAM_ yyrule yystart)\n\
+\n\
+typedef int (*yyrule)(yycontext *yy);\n\
+\n\
+YY_PARSE(int) YYPARSEFROM(YY_CTX_PARAM_ yyrule yystart)\n\
 {\n\
     int yyok;\n\
     if (!yyctx->__buflen)\n\
@@ -678,13 +678,13 @@ static char *header= "\
     yyCommit(yyctx);\n\
     return yyok;\n\
 }\n\
-                                  \n\
-                                  YY_PARSE(int) YYPARSE(YY_CTX_PARAM)\n\
+\n\
+YY_PARSE(int) YYPARSE(YY_CTX_PARAM)\n\
 {\n\
     return YYPARSEFROM(YY_CTX_ARG_ yy_%s);\n\
 }\n\
-                                  \n\
-                                  YY_PARSE(yycontext *) YYRELEASE(yycontext *yyctx)\n\
+\n\
+YY_PARSE(yycontext *) YYRELEASE(yycontext *yyctx)\n\
 {\n\
     if (yyctx->__buflen)\n\
     {\n\
@@ -696,11 +696,11 @@ static char *header= "\
     }\n\
     return yyctx;\n\
 }\n\
-                                  \n\
+\n\
 #endif\n\
-                                  ";
+";
 
-                                  void Rule_compile_c_header(void)
+void Rule_compile_c_header(void)
 {
     fprintf(output, "/* A recursive-descent parser generated by peg %d.%d.%d */\n", PEG_MAJOR, PEG_MINOR, PEG_LEVEL);
     fprintf(output, "\n");
@@ -739,22 +739,22 @@ int consumesInput(Node *node)
         case Error:		return consumesInput(node->error.element);
 
         case Alternate:
-                        {
-                            Node *n;
-                            for (n= node->alternate.first;  n;  n= n->alternate.next)
-                                if (!consumesInput(n))
-                                    return 0;
-                        }
-                        return 1;
+                       {
+                           Node *n;
+                           for (n= node->alternate.first;  n;  n= n->alternate.next)
+                               if (!consumesInput(n))
+                                   return 0;
+                       }
+                       return 1;
 
         case Sequence:
-                        {
-                            Node *n;
-                            for (n= node->alternate.first;  n;  n= n->alternate.next)
-                                if (consumesInput(n))
-                                    return 1;
-                        }
-                        return 0;
+                       {
+                           Node *n;
+                           for (n= node->alternate.first;  n;  n= n->alternate.next)
+                               if (consumesInput(n))
+                                   return 1;
+                       }
+                       return 0;
 
         case PeekFor:	return 0;
         case PeekNot:	return 0;
@@ -763,8 +763,8 @@ int consumesInput(Node *node)
         case Plus:		return consumesInput(node->plus.element);
 
         default:
-                        fprintf(stderr, "\nconsumesInput: illegal node type %d\n", node->type);
-                        exit(1);
+                      fprintf(stderr, "\nconsumesInput: illegal node type %d\n", node->type);
+                      exit(1);
     }
     return 0;
 }
