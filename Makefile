@@ -1,5 +1,5 @@
-CFLAGS = -g -Wall $(OFLAGS) $(XFLAGS) -Isrc
-OFLAGS = -O3 -DNDEBUG
+CFLAGS = -g3 -Wall $(OFLAGS) $(XFLAGS) -Isrc
+OFLAGS = -O0 -DNDEBUG
 #OFLAGS = -pg
 
 OBJS = tree.o compile.o

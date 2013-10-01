@@ -39,10 +39,13 @@ int actionCount= 0;
 int ruleCount= 0;
 int lastToken= -1;
 
+static int node_id = 0;
+
 static inline Node *_newNode(int type, int size)
 {
     Node *node= calloc(1, size);
     node->type= type;
+    node->node_id = node_id++;
     return node;
 }
 

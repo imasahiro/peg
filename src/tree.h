@@ -1,6 +1,6 @@
 /* Copyright (c) 2007 by Ian Piumarta
  * All rights reserved.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the 'Software'),
  * to deal in the Software without restriction, including without limitation
@@ -10,9 +10,9 @@
  * permission notice appear in all copies of the Software.  Acknowledgement
  * of the use of this Software in supporting documentation would be
  * appreciated but is not required.
- * 
+ *
  * THE SOFTWARE IS PROVIDED 'AS IS'.  USE ENTIRELY AT YOUR OWN RISK.
- * 
+ *
  * Last edited: 2012-05-15 22:37:53 by piumarta on emilia
  */
 
@@ -21,34 +21,119 @@
 enum { Unknown= 0, Rule, Variable, Name, Dot, Character, String, Class, Action, Predicate, Error, Alternate, Sequence, PeekFor, PeekNot, Query, Star, Plus };
 
 enum {
-  RuleUsed	= 1<<0,
-  RuleReached	= 1<<1,
+  RuleUsed    = 1<<0,
+  RuleReached = 1<<1,
 };
 
 typedef union Node Node;
 
-struct Rule	 { int type;  Node *next;   char *name;	 Node *variables;  Node *expression;  int id;  int flags;	};
-struct Variable	 { int type;  Node *next;   char *name;  Node *value;  int offset;					};
-struct Name	 { int type;  Node *next;   Node *rule;  Node *variable;						};
-struct Dot	 { int type;  Node *next;										};
-struct Character { int type;  Node *next;   char *value;								};
-struct String	 { int type;  Node *next;   char *value;								};
-struct Class	 { int type;  Node *next;   unsigned char *value;							};
-struct Action	 { int type;  Node *next;   char *text;	  Node *list;  char *name;  Node *rule;				};
-struct Predicate { int type;  Node *next;   char *text;									};
-struct Error	 { int type;  Node *next;   Node *element;  char *text;							};
-struct Alternate { int type;  Node *next;   Node *first;  Node *last;							};
-struct Sequence	 { int type;  Node *next;   Node *first;  Node *last;							};
-struct PeekFor	 { int type;  Node *next;   Node *element;								};
-struct PeekNot	 { int type;  Node *next;   Node *element;								};
-struct Query	 { int type;  Node *next;   Node *element;								};
-struct Star	 { int type;  Node *next;   Node *element;								};
-struct Plus	 { int type;  Node *next;   Node *element;								};
-struct Any	 { int type;  Node *next;										};
+struct Rule  {
+  int type; int node_id;
+  Node *next;
+  char *name;
+  Node *variables;
+  Node *expression;
+  int id;
+  int flags;
+};
+struct Variable {
+  int type; int node_id;
+  Node *next;
+  char *name;
+  Node *value;
+  int offset;
+};
+struct Name {
+  int type; int node_id;
+  Node *next;
+  Node *rule;
+  Node *variable;
+};
+struct Dot {
+  int type; int node_id;
+  Node *next;
+};
+struct Character {
+  int type; int node_id;
+  Node *next;
+  char *value;
+};
+struct String {
+  int type; int node_id;
+  Node *next;
+  char *value;
+};
+struct Class {
+  int type; int node_id;
+  Node *next;
+  unsigned char *value;
+};
+struct Action {
+  int type; int node_id;
+  Node *next;
+  char *text;
+  Node *list;
+  char *name;
+  Node *rule;
+};
+struct Predicate {
+  int type; int node_id;
+  Node *next;
+  char *text;
+};
+struct Error {
+  int type; int node_id;
+  Node *next;
+  Node *element;
+  char *text;
+};
+struct Alternate {
+  int type; int node_id;
+  Node *next;
+  Node *first;
+  Node *last;
+};
+struct Sequence {
+  int type; int node_id;
+  Node *next;
+  Node *first;
+  Node *last;
+};
+struct PeekFor {
+  int type; int node_id;
+  Node *next;
+  Node *element;
+};
+struct PeekNot {
+  int type; int node_id;
+  Node *next;
+  Node *element;
+};
+struct Query {
+  int type; int node_id;
+  Node *next;
+  Node *element;
+};
+struct Star {
+  int type; int node_id;
+  Node *next;
+  Node *element;
+};
+struct Plus {
+  int type; int node_id;
+  Node *next;
+  Node *element;
+};
+struct Any {
+  int type; int node_id;
+  Node *next;
+};
 
 union Node
 {
-  int			type;
+  struct {
+    int type; int node_id;
+  };
   struct Rule		rule;
   struct Variable	variable;
   struct Name		name;
