@@ -174,7 +174,9 @@ static void Node_compile_c_ko(Node *node, int ko)
 {
     Node *root = node;
     assert(node);
-    printfN_(output, "SyntaxTree %s%d(" ARGS ") {\n", node_type(node), node->node_id);
+    if(node->type != Name) {
+        printfN_(output, "SyntaxTree %s%d(" ARGS ") {\n", node_type(node), node->node_id);
+    }
     switch (node->type) {
     case Rule:
         printfN_(stderr, "\ninternal error #1 (%s)\n", node->rule.name);
@@ -343,7 +345,7 @@ static void Node_compile_c_ko(Node *node, int ko)
 
     case Query:
         {
-            int qko= yyl(), qok= yyl();
+            int qok= yyl();
             indent_level += 1;
             printfN_(output, "SyntaxTree Tree = null;\n");
             Node_compile_c_ko(node->star.element, qok);
@@ -382,7 +384,7 @@ static void Node_compile_c_ko(Node *node, int ko)
 
     case Plus:
         {
-            int again= yyl(), out= yyl();
+            int out= yyl();
             indent_level += 1;
             printfN_(output, "SyntaxTree Head = null;\n");
             printfN_(output, "SyntaxTree Tree = ParentTree;\n");
