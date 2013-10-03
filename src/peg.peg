@@ -51,9 +51,11 @@ Literal		= ['] < (!['] Char )* > ['] Spacing		#ikp inserted < ... >
 		 / ["] < (!["] Char )* > ["] Spacing		#ikp inserted < ... >
 Class		= '[' < (!']' Range)* > ']' Spacing		#ikp inserted < ... >
 Range		= Char '-' Char / Char
+
+HexNumber = "0" / [1-9a-fA-F][0-9a-fA-F]*
+
 Char		= '\\' [abefnrtv'"\[\]\\]			#ikp added missing ANSI escapes: abefv
-		 / '\\' [0-3][0-7][0-7]
-		 / '\\' [0-7][0-7]?
+		 / '\\u' HexNumber
 		 / '\\' '-'					#ikp added
 		 / !'\\' .
 LEFTARROW	= '=' Spacing
@@ -66,8 +68,9 @@ PLUS		= '+' Spacing
 OPEN		= '(' Spacing
 CLOSE		= ')' Spacing
 DOT		= '.' Spacing
-Spacing		= (Space / Comment)*
-Comment		= '#' (!EndOfLine .)* EndOfLine
+Spacing		= (Space / Comment / Comment2)*
+Comment     = '#' (!EndOfLine .)* EndOfLine
+Comment2    = '//' (!EndOfLine .)* EndOfLine
 Space		= ' ' / '\t' / EndOfLine
 EndOfLine	= '\r\n' / '\n' / '\r'
 EndOfFile	= !.

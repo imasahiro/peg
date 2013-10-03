@@ -95,13 +95,14 @@ int main(int argc, char **argv)
 {
     Node *n;
     int   c;
+    int greenteaMode = 0;
 
     output= stdout;
     input= stdin;
     lineNumber= 1;
     fileName= "<stdin>";
 
-    while (-1 != (c= getopt(argc, argv, "Vho:v")))
+    while (-1 != (c= getopt(argc, argv, "Vhgo:v")))
     {
         switch (c)
         {
@@ -113,6 +114,9 @@ int main(int argc, char **argv)
                 usage(basename(argv[0]));
                 break;
 
+            case 'g':
+                greenteaMode = 1;
+                break;
             case 'o':
                 if (!(output= fopen(optarg, "w")))
                 {
@@ -166,8 +170,14 @@ int main(int argc, char **argv)
         for (n= rules;  n;  n= n->any.next)
             Rule_print(n);
 
-    Rule_compile_c_header();
-    if (rules) Rule_compile_c(rules);
+    if (greenteaMode == 1) {
+        Rule_compile_green_header();
+        if (rules)
+            Rule_compile_green(rules);
+    } else {
+        Rule_compile_c_header();
+        if (rules) Rule_compile_c(rules);
+    }
 
     return 0;
 }
