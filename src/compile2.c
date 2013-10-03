@@ -122,7 +122,7 @@ static char *makeCharClass(unsigned char *cclass)
 
     ptr= string;
     for (c = 0; c < VECTOR_LENGTH; c++) {
-        ptr += sprintf(ptr, ",0x%x", bits[c]);
+        ptr += sprintf(ptr, ",%d", bits[c]);
     }
 
     return string;
@@ -174,6 +174,7 @@ static void Node_compile_c_ko(Node *node, int ko)
 {
     Node *root = node;
     assert(node);
+    printfN_(output, "SyntaxTree %s%d(" ARGS ") {\n", node_type(node), node->node_id);
     switch (node->type) {
     case Rule:
         printfN_(stderr, "\ninternal error #1 (%s)\n", node->rule.name);
@@ -181,7 +182,7 @@ static void Node_compile_c_ko(Node *node, int ko)
         break;
 
     case Dot:
-        printfN_(output, "if (!MatchDot(Context) {\n");
+        printfN_(output, "if (!MatchDot(Context)) {\n");
         indent_level += 1;
         printfN_(output, "return Failed(Context, ParentTree, \"\");\n");
         indent_level -= 1;
@@ -196,14 +197,13 @@ static void Node_compile_c_ko(Node *node, int ko)
     case String:
         {
             int len= strlen(node->string.value);
-            printfN_(output, "SyntaxTree %s%d(" ARGS ") {\n", node_type(node), node->node_id);
             indent_level += 1;
             if (1 == len) {
-                const char *t1 = "\\'";
-                //if ('\'' != node->string.value[0]) {
-                //    t1 = node->string.value;
-                //}
-                printfN_(output, "if (!MatchChar(Context, \"%s\") {\n", t1);
+                const char *t1 = node->string.value;
+                if ('\"' == node->string.value[0]) {
+                    t1 = "\"";
+                }
+                printfN_(output, "if (!MatchChar(Context, \"%s\")) {\n", t1);
 
             }
             else {
@@ -228,7 +228,6 @@ static void Node_compile_c_ko(Node *node, int ko)
         break;
 
     case Class:
-        printfN_(output, "SyntaxTree Class%d(" ARGS ") {\n", node->node_id);
         indent_level += 1;
         printfN_(output, "if (!MatchClass(Context %s)) {\n", makeCharClass(node->cclass.value));
 
@@ -242,9 +241,8 @@ static void Node_compile_c_ko(Node *node, int ko)
         break;
 
     case Action:
-        printfN_(output, "SyntaxTree Action%d(" ARGS ") {\n", node->node_id);
         indent_level += 1;
-        printfN_(output, "return yy%s(ns, context, Tree, pattern);\n", node->action.name);
+        printfN_(output, "return yy%s(ns, Context, ParentTree, pattern);\n", node->action.name);
         indent_level -= 1;
         printfN_(output, "}\n");
         break;
@@ -271,7 +269,6 @@ static void Node_compile_c_ko(Node *node, int ko)
         {
             int ok= yyl();
             save(ok);
-            printfN_(output, "SyntaxTree Alternate%d(" ARGS ") {\n", node->node_id);
             indent_level += 1;
             printfN_(output, "SyntaxTree Tree = null;\n");
             for (node= node->alternate.first;  node;  node= node->alternate.next) {
@@ -292,7 +289,6 @@ static void Node_compile_c_ko(Node *node, int ko)
 
     case Sequence:
         {
-            printfN_(output, "SyntaxTree Sequence%d(" ARGS ") {\n", node->node_id);
             int current_indent_level = indent_level;
             indent_level += 1;
             printfN_(output, "SyntaxTree TopTree = new SyntaxTree(ParentTree, ns, GetToken(Context), pattern);\n");
@@ -324,13 +320,13 @@ static void Node_compile_c_ko(Node *node, int ko)
             Node_compile_c_ko(node->peekFor.element, ko);
             restore(ok);
             end();
+            printfN_(output, "new ERROR();\n");
         }
         break;
 
     case PeekNot:
         {
             int ok= yyl();
-            printfN_(output, "SyntaxTree Star%d(" ARGS ") {\n", node->node_id);
             indent_level += 1;
             printfN_(output, "SyntaxTree Tree = null;\n");
             Node_compile_c_ko(node->star.element, ok);
@@ -341,30 +337,32 @@ static void Node_compile_c_ko(Node *node, int ko)
             printfN_(output, "}\n");
             printfN_(output, "return Tree\n");
 
-            Node_compile_c_ko(node->peekFor.element, ok);
+            //Node_compile_c_ko(node->peekFor.element, ok);
         }
         break;
 
     case Query:
         {
             int qko= yyl(), qok= yyl();
-            begin();
-            save(qko);
-            Node_compile_c_ko(node->query.element, qko);
-            jump(qok);
-            label(qko);
-            restore(qko);
-            end();
-            label(qok);
+            indent_level += 1;
+            printfN_(output, "SyntaxTree Tree = null;\n");
+            Node_compile_c_ko(node->star.element, qok);
+            printfN_(output, "if (IsFailed(Tree)) {\n");
+            indent_level += 1;
+            printfN_(output, "SyntaxTree NullTree = new SyntaxTree(null, ns, GetToken(Context), null);\n");
+            printfN_(output, "return NullTree;\n");
+            indent_level -= 1;
+            printfN_(output, "}\n");
+            printfN_(output, "return Tree\n");
         }
         break;
 
     case Star:
         {
             int out = yyl();
-            printfN_(output, "SyntaxTree Star%d(" ARGS ") {\n", node->node_id);
             indent_level += 1;
             printfN_(output, "SyntaxTree Head = null;\n");
+            printfN_(output, "SyntaxTree Tree = null;\n");
             printfN_(output, "while(true) {\n");
             indent_level += 1;
             Node_compile_c_ko(node->star.element, out);
@@ -373,7 +371,7 @@ static void Node_compile_c_ko(Node *node, int ko)
             printfN_(output, "break;\n");
             indent_level -= 1;
             printfN_(output, "}\n");
-            printfN_(output, "AppendParsedTree(TopTree, Tree);\n");
+            printfN_(output, "AppendParsedTree(Head, Tree);\n");
             indent_level -= 1;
             printfN_(output, "}\n");
             printfN_(output, "return Head;\n");
@@ -385,9 +383,9 @@ static void Node_compile_c_ko(Node *node, int ko)
     case Plus:
         {
             int again= yyl(), out= yyl();
-            printfN_(output, "SyntaxTree Plus%d(" ARGS ") {\n", node->node_id);
             indent_level += 1;
             printfN_(output, "SyntaxTree Head = null;\n");
+            printfN_(output, "SyntaxTree Tree = ParentTree;\n");
             Node_compile_c_ko(node->plus.element, ko);
             printfN_(output, "if (IsFailed(Tree)) {\n");
             indent_level += 1;
@@ -402,7 +400,7 @@ static void Node_compile_c_ko(Node *node, int ko)
             printfN_(output, "break;\n");
             indent_level -= 1;
             printfN_(output, "}\n");
-            printfN_(output, "AppendParsedTree(TopTree, Tree);\n");
+            printfN_(output, "AppendParsedTree(Head, Tree);\n");
             indent_level -= 1;
             printfN_(output, "}\n");
             printfN_(output, "return Head;\n");
@@ -500,6 +498,9 @@ static char *header= ""
 "void debug(String message) { println(message); }\n"
 "boolean MatchString(TokenContext Context, String Text) {\n"
 "    debug(Text);\n"
+"    return true;\n"
+"}\n"
+"boolean MatchDot(TokenContext Context) {\n"
 "    return true;\n"
 "}\n"
 "boolean MatchChar(TokenContext Context, String Text) {\n"
