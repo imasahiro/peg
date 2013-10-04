@@ -189,6 +189,9 @@ static void Node_compile_c_ko(Node *node, int ko)
         printfN_(output, "return Failed(Context, ParentTree, \"\");\n");
         indent_level -= 1;
         printfN_(output, "}\n");
+        printfN_(output, "return new SyntaxTree(null, ns, GetToken(Context), null);\n");
+        indent_level -= 1;
+        printfN_(output, "}\n");
         break;
 
     case Name:
