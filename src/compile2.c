@@ -296,14 +296,14 @@ static void Node_compile_c_ko(Node *node, int ko)
         {
             int current_indent_level = indent_level;
             indent_level += 1;
-            printfN_(output, "SyntaxTree TopTree = new SyntaxTree(ParentTree, ns, GetToken(Context), pattern);\n");
+            printfN_(output, "SyntaxTree Head = new SyntaxTree(ParentTree, ns, GetToken(Context), pattern);\n");
             printfN_(output, "SyntaxTree Tree = null;\n");
             for (node= node->sequence.first;  node;  node= node->sequence.next) {
                 Node_compile_c_ko(node, ko);
                 printfN_(output, "if (!IsFailed(Tree)) {\n");
                 indent_level += 1;
                 if (node->sequence.next) {
-                    printfN_(output, "AppendParsedTree(TopTree, Tree);\n");
+                    printfN_(output, "AppendParsedTree(Head, Tree);\n");
                 }
             }
             printfN_(output, "return Tree;\n");
@@ -366,7 +366,7 @@ static void Node_compile_c_ko(Node *node, int ko)
         {
             int out = yyl();
             indent_level += 1;
-            printfN_(output, "SyntaxTree Head = null;\n");
+            printfN_(output, "SyntaxTree Head = new SyntaxTree(ParentTree, ns, GetToken(Context), pattern);\n");
             printfN_(output, "SyntaxTree Tree = null;\n");
             printfN_(output, "while(true) {\n");
             indent_level += 1;
@@ -466,8 +466,8 @@ static void Rule_compile_green2(Node *node)
         fprintf(output, "\n");
         fprintf(output, "SyntaxTree yy_%s(" ARGS ") {\n", node->rule.name);
         indent_level += 1;
-        printfN_(output, "SyntaxTree TopTree = new SyntaxTree(ParentTree, ns, GetToken(Context), pattern);\n");
-        printfN_(output, "SyntaxTree Tree = TopTree;\n");
+        printfN_(output, "SyntaxTree Head = new SyntaxTree(ParentTree, ns, GetToken(Context), pattern);\n");
+        printfN_(output, "SyntaxTree Tree = Head;\n");
         if (!safe) save(0);
         fprintf(output, "\n    debug(\"%s\");\n", node->rule.name);
         Node_compile_c_ko(node->rule.expression, ko);
