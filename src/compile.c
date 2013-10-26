@@ -170,7 +170,7 @@ static void Node_compile_c_ko(Node *node, int ko)
 
         case Action:
             fprintf(output, "  YY_END;");
-            fprintf(output, "  yyDo(yy, yy%s, yy->__begin, yy->__end);", node->action.name);
+            fprintf(output, "  yyDo(yy, yy%s, yypos0, yy->__end);", node->action.name);
             break;
 
         case Predicate:
