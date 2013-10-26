@@ -122,8 +122,8 @@ static void begin(void)		{ fprintf(output, "\n  {"); }
 static void end(void)		{ fprintf(output, "\n  }"); }
 static void label(int n)	{ fprintf(output, "\n  l%d:;\t", n); }
 static void jump(int n)		{ fprintf(output, "  goto l%d;", n); }
-static void save(int n)		{ fprintf(output, "  int yypos%d= yy->__pos, yythunkpos%d= yy->__thunkpos;", n, n); }
-static void restore(int n)	{ fprintf(output,     "  yy->__pos= yypos%d; yy->__thunkpos= yythunkpos%d;", n, n); }
+static void save(int n)		{ fprintf(output, "  int yypos%d= yy->__pos, yythunkpos%d= yy->__thunkpos, yybegin%d= yy->__begin, yyend%d= yy->__end;", n, n, n, n); }
+static void restore(int n)	{ fprintf(output,     "  yy->__pos= yypos%d; yy->__thunkpos= yythunkpos%d; yy->__begin = yybegin%d, yy->__end = yyend%d;", n, n, n, n); }
 
 static void Node_compile_c_ko(Node *node, int ko)
 {
@@ -169,6 +169,7 @@ static void Node_compile_c_ko(Node *node, int ko)
             break;
 
         case Action:
+            fprintf(output, "  YY_END;");
             fprintf(output, "  yyDo(yy, yy%s, yy->__begin, yy->__end);", node->action.name);
             break;
 
@@ -353,6 +354,7 @@ static void Rule_compile_c2(Node *node)
         if (node->rule.variables)
             fprintf(output, "  yyDo(yy, yyPush, %d, 0);", countVariables(node->rule.variables));
         fprintf(output, "\n  yyprintf((stderr, \"%%s\\n\", \"%s\"));", node->rule.name);
+        fprintf(output, "  YY_BEGIN;");
         Node_compile_c_ko(node->rule.expression, ko);
         fprintf(output, "\n  yyprintf((stderr, \"  ok   %%s @ %%s\\n\", \"%s\", yy->__buf+yy->__pos));", node->rule.name);
         if (node->rule.variables)
@@ -434,7 +436,7 @@ static char *preamble= "\
 #ifndef YY_PART\n\
 \n\
 typedef struct _yycontext yycontext;\n\
-typedef void (*yyaction)(yycontext *yy, char *yytext, int yyleng);\n\
+typedef void (*yyaction)(yycontext *yy, int yybegin, int yyend);\n\
 typedef struct _yythunk { int begin, end;  yyaction  action;  struct _yythunk *next; } yythunk;\n\
 \n\
 struct _yycontext {\n\
@@ -442,11 +444,8 @@ struct _yycontext {\n\
     int       __buflen;\n\
     int       __pos;\n\
     int       __limit;\n\
-    char     *__text;\n\
-    int       __textlen;\n\
     int       __begin;\n\
     int       __end;\n\
-    int       __textmax;\n\
     yythunk  *__thunks;\n\
     int       __thunkslen;\n\
     int       __thunkpos;\n\
@@ -572,33 +571,14 @@ YY_LOCAL(void) yyDo(yycontext *yy, yyaction action, int begin, int end)\n\
     ++yy->__thunkpos;\n\
 }\n\
 \n\
-YY_LOCAL(int) yyText(yycontext *yy, int begin, int end)\n\
-{\n\
-    int yyleng= end - begin;\n\
-    if (yyleng <= 0)\n\
-    yyleng= 0;\n\
-    else\n\
-    {\n\
-        while (yy->__textlen < (yyleng + 1))\n\
-        {\n\
-            yy->__textlen *= 2;\n\
-            yy->__text= (char *)YY_REALLOC(yy, yy->__text, yy->__textlen);\n\
-        }\n\
-        memcpy(yy->__text, yy->__buf + begin, yyleng);\n\
-    }\n\
-    yy->__text[yyleng]= '\\0';\n\
-    return yyleng;\n\
-}\n\
-\n\
 YY_LOCAL(void) yyDone(yycontext *yy)\n\
 {\n\
     int pos;\n\
     for (pos= 0;  pos < yy->__thunkpos;  ++pos)\n\
     {\n\
         yythunk *thunk= &yy->__thunks[pos];\n\
-        int yyleng= thunk->end ? yyText(yy, thunk->begin, thunk->end) : thunk->begin;\n\
-        yyprintf((stderr, \"DO [%d] %p %s\\n\", pos, thunk->action, yy->__text));\n\
-        thunk->action(yy, yy->__text, yyleng);\n\
+        yyprintf((stderr, \"DO [%d] %p\\n\", pos, thunk->action));\n\
+        thunk->action(yy, thunk->begin, thunk->end);\n\
     }\n\
     yy->__thunkpos= 0;\n\
 }\n\
@@ -662,8 +642,6 @@ YY_PARSE(int) YYPARSEFROM(YY_CTX_PARAM_ yyrule yystart)\n\
     {\n\
         yyctx->__buflen= YY_BUFFER_SIZE;\n\
         yyctx->__buf= (char *)YY_MALLOC(yyctx, yyctx->__buflen);\n\
-        yyctx->__textlen= YY_BUFFER_SIZE;\n\
-        yyctx->__text= (char *)YY_MALLOC(yyctx, yyctx->__textlen);\n\
         yyctx->__thunkslen= YY_STACK_SIZE;\n\
         yyctx->__thunks= (yythunk *)YY_MALLOC(yyctx, sizeof(yythunk) * yyctx->__thunkslen);\n\
         yyctx->__valslen= YY_STACK_SIZE;\n\
@@ -690,7 +668,6 @@ YY_PARSE(yycontext *) YYRELEASE(yycontext *yyctx)\n\
     {\n\
         yyctx->__buflen= 0;\n\
         YY_FREE(yyctx->__buf);\n\
-        YY_FREE(yyctx->__text);\n\
         YY_FREE(yyctx->__thunks);\n\
         YY_FREE(yyctx->__vals);\n\
     }\n\
@@ -783,7 +760,7 @@ void Rule_compile_c(Node *node)
     fprintf(output, "\n");
     for (n= actions;  n;  n= n->action.list)
     {
-        fprintf(output, "YY_ACTION(void) yy%s(yycontext *yy, char *yytext, int yyleng)\n{\n", n->action.name);
+        fprintf(output, "YY_ACTION(void) yy%s(yycontext *yy, int yybegin, int yyend)\n{\n", n->action.name);
         defineVariables(n->action.rule->rule.variables);
         fprintf(output, "  yyprintf((stderr, \"do yy%s\\n\"));\n", n->action.name);
         fprintf(output, "  {\n");
