@@ -2,7 +2,7 @@ CFLAGS = -g3 -Wall $(OFLAGS) $(XFLAGS) -Isrc
 OFLAGS = -O0 -DNDEBUG
 #OFLAGS = -pg
 
-OBJS = tree.o compile.o compile2.o
+OBJS = tree.o compile.o #compile2.o
 
 all : peg leg
 

@@ -594,6 +594,8 @@ YY_LOCAL(void) yyCommit(yycontext *yy)\n\
     yy->__pos= yy->__thunkpos= 0;\n\
 }\n\
 \n\
+#ifdef ONE_LANG_REMOVE_COMPILE_ERROR\n\
+#else\n\
 YY_LOCAL(int) yyAccept(yycontext *yy, int tp0)\n\
 {\n\
     if (tp0)\n\
@@ -622,6 +624,7 @@ YY_LOCAL(void) yyPush(yycontext *yy, char *text, int count)\n\
 }\n\
 YY_LOCAL(void) yyPop(yycontext *yy, char *text, int count)   { yy->__val -= count; }\n\
 YY_LOCAL(void) yySet(yycontext *yy, char *text, int count)   { yy->__val[count]= yy->__; }\n\
+#endif\n\
 \n\
 #endif /* YY_PART */\n\
 \n\
