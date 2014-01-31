@@ -36,16 +36,6 @@ static int yyl(void)
     return ++prev;
 }
 
-static void charClassSet  (unsigned int bits[], int c) {
-    bits[c >> sizeof(unsigned int)] |=  (1 << (c % (sizeof(int) * 8)));
-}
-
-static void charClassClear(unsigned int bits[], int c) {
-    bits[c >> sizeof(unsigned int)] &= ~(1 << (c % (sizeof(int) * 8)));
-}
-
-typedef void (*setter)(unsigned int bits[], int c);
-
 static inline int ishex(int c) {
     return ('0' <= c && c <= '9') ||
         ('a' <= c && c <= 'f') ||
@@ -89,22 +79,34 @@ static int cnext(unsigned char **ccp)
     return c;
 }
 
+static void charClassSet  (unsigned char bits[], int c) {
+    bits[c] =  1;
+}
+
+static void charClassClear(unsigned char bits[], int c) {
+    bits[c] = 0;
+}
+
+typedef void (*setter)(unsigned char bits[], int c);
+
+
 static char *makeCharClass(unsigned char *cclass)
 {
-#define VECTOR_LENGTH (256 / (sizeof(unsigned int) * 8))
-    unsigned int bits[VECTOR_LENGTH];
+#define VECTOR_LENGTH (256)
+    unsigned char bits[VECTOR_LENGTH];
     setter set;
     int    c, prev= -1;
-    static char  string[256];
+    static char string[512] = {};
     char *ptr;
 
+    memset(string, 0, 512);
     if ('^' == *cclass) {
-        memset(bits, 255, sizeof(unsigned int) * VECTOR_LENGTH);
+        memset(bits, 255, sizeof(unsigned char) * VECTOR_LENGTH);
         set= charClassClear;
         ++cclass;
     }
     else {
-        memset(bits, 0, sizeof(unsigned int) * VECTOR_LENGTH);
+        memset(bits, 0, sizeof(unsigned char) * VECTOR_LENGTH);
         set= charClassSet;
     }
     while (*cclass) {
@@ -122,331 +124,124 @@ static char *makeCharClass(unsigned char *cclass)
 
     ptr= string;
     for (c = 0; c < VECTOR_LENGTH; c++) {
-        ptr += sprintf(ptr, ",%d", bits[c]);
+        if (bits[c]) {
+            switch (c) {
+            case '\a':  *ptr++ = '\\'; *ptr++ = 'a'; break;    /* bel */
+            case '\b':  *ptr++ = '\\'; *ptr++ = 'b'; break;    /* bs */
+            case '\f':  *ptr++ = '\\'; *ptr++ = 'f'; break;    /* ff */
+            case '\n':  *ptr++ = '\\'; *ptr++ = 'n'; break;    /* nl */
+            case '\r':  *ptr++ = '\\'; *ptr++ = 'r'; break;    /* cr */
+            case '\t':  *ptr++ = '\\'; *ptr++ = 't'; break;    /* ht */
+            case '\v':  *ptr++ = '\\'; *ptr++ = 'v'; break;    /* vt */
+            default:
+                       if (c >= 0x20) {
+                           ptr += sprintf(ptr, "%c", c);
+                       }
+            }
+        }
     }
 
     return string;
 }
 
-static int indent_level = 0;
-
-static void indent(FILE *fp) {
-    int i;
-    for (i = 0; i < indent_level; i++) {
-        fprintf(fp, "    ");
-    }
-}
-
-static void printfN_(FILE *fp, const char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    indent(fp);
-    vfprintf(fp, fmt, ap);
-    va_end(ap);
-}
-
-static void begin(void) {}
-static void end(void)   {}
-static void label(int n){}
-static void jump(int n) {}
-static void save(int n) {
-    //printfN_(output, "int yypos%d= yy->__pos, yythunkpos%d= yy->__thunkpos;\n", n, n);
-}
-static void restore(int n) {
-    //printfN_(output, "yy->__pos= yypos%d; yy->__thunkpos= yythunkpos%d;\n", n, n);
-}
-
-#define ARGS "NameSpace ns, TokenContext Context, SyntaxTree ParentTree, SyntaxPattern pattern"
-
-#define NODE_TYPE_LIST(OP) \
-    OP(Unknown) OP(Rule) OP(Variable) OP(Name) OP(Dot) OP(Character)\
-    OP(String) OP(Class) OP(Action) OP(Predicate) OP(Error) OP(Alternate)\
-    OP(Sequence) OP(PeekFor) OP(PeekNot) OP(Query) OP(Star) OP(Plus)
-static const char *node_type(Node *node) {
-    switch (node->type) {
-#define CASE(TYPE) case TYPE : return #TYPE;
-        NODE_TYPE_LIST(CASE)
-    }
-    return "";
-}
-
 static void Node_compile_c_ko(Node *node, int ko)
 {
-    Node *root = node;
     assert(node);
-    if(node->type != Name) {
-        printfN_(output, "SyntaxTree %s%d(" ARGS ") {\n", node_type(node), node->node_id);
-    }
+    int i = 0;
+    int ok = 0;
+    int qok = 0;
+    int out = 0;
     switch (node->type) {
     case Rule:
-        printfN_(stderr, "\ninternal error #1 (%s)\n", node->rule.name);
+        fprintf(stderr, "\ninternal error #1 (%s)\n", node->rule.name);
         exit(1);
         break;
 
     case Dot:
-        printfN_(output, "if (!MatchDot(Context)) {\n");
-        indent_level += 1;
-        printfN_(output, "return Failed(Context, ParentTree, \"\");\n");
-        indent_level -= 1;
-        printfN_(output, "}\n");
-        printfN_(output, "return new SyntaxTree(null, ns, GetToken(Context), null);\n");
-        indent_level -= 1;
-        printfN_(output, "}\n");
+        fprintf(output, "any");
         break;
 
     case Name:
-        printfN_(output, "Tree = yy_%s(ns, Context, Tree, pattern);\n", node->name.rule->rule.name);
+        fprintf(output, "%s", node->name.rule->rule.name);
         return;
 
     case Character:
     case String:
-        {
-            int len= strlen(node->string.value);
-            indent_level += 1;
-            if (1 == len) {
-                const char *t1 = node->string.value;
-                if ('\"' == node->string.value[0]) {
-                    t1 = "\"";
-                }
-                printfN_(output, "if (!MatchChar(Context, \"%s\")) {\n", t1);
-
-            }
-            else {
-                const char *fmt = "\"";
-                const char *func = "MatchString";
-                //if (2 == len && '\\' == node->string.value[0]) {
-                //    fmt = "'";
-                //    func = "MatchChar";
-                //}
-                printfN_(output, "if (!%s(Context, %s%s%s)) {\n", func, fmt, node->string.value, fmt);
-
-            }
-
-            indent_level += 1;
-            printfN_(output, "return Failed(Context, ParentTree, \"\");\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-            printfN_(output, "return new SyntaxTree(null, ns, GetToken(Context), null);\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-        }
+        fprintf(output, "string(\"%s\")", node->string.value);
         break;
 
     case Class:
-        indent_level += 1;
-        printfN_(output, "if (!MatchClass(Context %s)) {\n", makeCharClass(node->cclass.value));
-
-        indent_level += 1;
-        printfN_(output, "return Failed(Context, ParentTree, \"\");\n");
-        indent_level -= 1;
-        printfN_(output, "}\n");
-        printfN_(output, "return new SyntaxTree(null, ns, GetToken(Context), null);\n");
-        indent_level -= 1;
-        printfN_(output, "}\n");
+        fprintf(output, "charctor(\"%s\")", makeCharClass(node->cclass.value));
         break;
 
     case Action:
-        indent_level += 1;
-        printfN_(output, "return yy%s(ns, Context, ParentTree, pattern);\n", node->action.name);
-        indent_level -= 1;
-        printfN_(output, "}\n");
+        fprintf(output, "apply(new YY%s())", node->action.name);
         break;
 
     case Predicate:
-        printfN_(output, "Pred  yyText(yy, yy->__begin, yy->__end);  if (!(%s)) goto l%d;\n", node->action.text, ko);
+        fprintf(output, "predicate:%s", node->action.text);
         break;
 
     case Error:
-        {
-            int eok= yyl(), eko= yyl();
-            Node_compile_c_ko(node->error.element, eko);
-            jump(eok);
-            label(eko);
-            printfN_(output, "yyText(yy, yy->__begin, yy->__end);  {\n");
-            printfN_(output, "%s;\n", node->error.text);
-            printfN_(output, "}");
-            jump(ko);
-            label(eok);
-        }
         break;
 
     case Alternate:
-        {
-            int ok= yyl();
-            save(ok);
-            indent_level += 1;
-            printfN_(output, "SyntaxTree Tree = null;\n");
-            for (node= node->alternate.first;  node;  node= node->alternate.next) {
-                Node_compile_c_ko(node, ko);
-                printfN_(output, "if (IsFailed(Tree)) {\n");
-                indent_level += 1;
-                printfN_(output, "return Failed(Context, Tree);\n");
-                indent_level -= 1;
-                printfN_(output, "}\n");
-            }
-            printfN_(output, "return Tree;\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-            end();
-            label(ok);
+        fprintf(output, "or(");
+        for (node= node->alternate.first; node; node= node->alternate.next) {
+            if (i != 0) { fprintf(output, ", "); }
+            Node_compile_c_ko(node, ko);
+            i++;
         }
+        fprintf(output, ")");
         break;
 
     case Sequence:
-        {
-            int current_indent_level = indent_level;
-            indent_level += 1;
-            printfN_(output, "SyntaxTree Head = new SyntaxTree(ParentTree, ns, GetToken(Context), pattern);\n");
-            printfN_(output, "SyntaxTree Tree = null;\n");
-            for (node= node->sequence.first;  node;  node= node->sequence.next) {
-                Node_compile_c_ko(node, ko);
-                printfN_(output, "if (!IsFailed(Tree)) {\n");
-                indent_level += 1;
-                if (node->sequence.next) {
-                    printfN_(output, "AppendParsedTree(Head, Tree);\n");
-                }
-            }
-            printfN_(output, "return Tree;\n");
-            while (indent_level > current_indent_level + 1) {
-                indent_level -= 1;
-                printfN_(output, "}\n");
-            }
-            printfN_(output, "return Failed(Context, Tree);\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
+        fprintf(output, "seq(");
+        for (node= node->sequence.first; node; node= node->sequence.next) {
+            if (i != 0) { fprintf(output, ", "); }
+            Node_compile_c_ko(node, ko);
+            i++;
         }
+        fprintf(output, ")");
         break;
 
     case PeekFor:
-        {
-            int ok= yyl();
-            begin();
-            save(ok);
-            Node_compile_c_ko(node->peekFor.element, ko);
-            restore(ok);
-            end();
-            printfN_(output, "new ERROR();\n");
-        }
+        fprintf(output, "peekfor(");
+        Node_compile_c_ko(node->peekFor.element, ko);
+        fprintf(output, ")");
         break;
 
     case PeekNot:
-        {
-            int ok= yyl();
-            indent_level += 1;
-            printfN_(output, "SyntaxTree Tree = null;\n");
-            Node_compile_c_ko(node->star.element, ok);
-            printfN_(output, "if (!IsFailed(Tree)) {\n");
-            indent_level += 1;
-            printfN_(output, "return null;\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-            printfN_(output, "return Tree\n");
-
-            //Node_compile_c_ko(node->peekFor.element, ok);
-        }
+        fprintf(output, "not(");
+        Node_compile_c_ko(node->star.element, ok);
+        fprintf(output, ")");
         break;
 
     case Query:
-        {
-            int qok= yyl();
-            indent_level += 1;
-            printfN_(output, "SyntaxTree Tree = null;\n");
-            Node_compile_c_ko(node->star.element, qok);
-            printfN_(output, "if (IsFailed(Tree)) {\n");
-            indent_level += 1;
-            printfN_(output, "SyntaxTree NullTree = new SyntaxTree(null, ns, GetToken(Context), null);\n");
-            printfN_(output, "return NullTree;\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-            printfN_(output, "return Tree\n");
-        }
+        fprintf(output, "query(");
+        Node_compile_c_ko(node->star.element, qok);
+        fprintf(output, ")");
         break;
 
     case Star:
-        {
-            int out = yyl();
-            indent_level += 1;
-            printfN_(output, "SyntaxTree Head = new SyntaxTree(ParentTree, ns, GetToken(Context), pattern);\n");
-            printfN_(output, "SyntaxTree Tree = null;\n");
-            printfN_(output, "while(true) {\n");
-            indent_level += 1;
-            Node_compile_c_ko(node->star.element, out);
-            printfN_(output, "if (IsFailed(Tree)) {\n");
-            indent_level += 1;
-            printfN_(output, "break;\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-            printfN_(output, "AppendParsedTree(Head, Tree);\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-            printfN_(output, "return Head;\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-        }
+        fprintf(output, "repeat(");
+        Node_compile_c_ko(node->star.element, out);
+        fprintf(output, ")");
         break;
 
     case Plus:
-        {
-            int out= yyl();
-            indent_level += 1;
-            printfN_(output, "SyntaxTree Head = null;\n");
-            printfN_(output, "SyntaxTree Tree = ParentTree;\n");
-            Node_compile_c_ko(node->plus.element, ko);
-            printfN_(output, "if (IsFailed(Tree)) {\n");
-            indent_level += 1;
-            printfN_(output, "return Failed(Context, Tree);\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-            printfN_(output, "while(true) {\n");
-            indent_level += 1;
-            Node_compile_c_ko(node->star.element, out);
-            printfN_(output, "if (IsFailed(Tree)) {\n");
-            indent_level += 1;
-            printfN_(output, "break;\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-            printfN_(output, "AppendParsedTree(Head, Tree);\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-            printfN_(output, "return Head;\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-
-        }
+        fprintf(output, "repeat1(");
+        Node_compile_c_ko(node->plus.element, ko);
+        fprintf(output, ",");
+        Node_compile_c_ko(node->star.element, out);
+        fprintf(output, ")");
         break;
 
     default:
-        printfN_(stderr, "\nNode_compile_c_ko: illegal node type %d\n", node->type);
+        fprintf(stderr, "\nNode_compile_c_ko: illegal node type %d\n", node->type);
         exit(1);
     }
-    printfN_(output, "Tree = %s%d(ns, Context, Tree, pattern);\n", node_type(root), root->node_id);
 }
-
-
-static void defineVariables(Node *node)
-{
-    int count= 0;
-    while (node) {
-        fprintf(output, "#define %s yy->__val[%d]\n", node->variable.name, --count);
-        node->variable.offset= count;
-        node= node->variable.next;
-    }
-    fprintf(output, "#define __ yy->__\n");
-    fprintf(output, "#define yypos yy->__pos\n");
-    fprintf(output, "#define yythunkpos yy->__thunkpos\n");
-}
-
-static void undefineVariables(Node *node)
-{
-    fprintf(output, "#undef yythunkpos\n");
-    fprintf(output, "#undef yypos\n");
-    fprintf(output, "#undef yy\n");
-    while (node) {
-        fprintf(output, "#undef %s\n", node->variable.name);
-        node= node->variable.next;
-    }
-}
-
 
 static void Rule_compile_green2(Node *node)
 {
@@ -463,80 +258,20 @@ static void Rule_compile_green2(Node *node)
 
         safe= ((Query == node->rule.expression->type) || (Star == node->rule.expression->type));
 
-        fprintf(output, "\n");
-        fprintf(output, "SyntaxTree yy_%s(" ARGS ") {\n", node->rule.name);
-        indent_level += 1;
-        printfN_(output, "SyntaxTree Head = new SyntaxTree(ParentTree, ns, GetToken(Context), pattern);\n");
-        printfN_(output, "SyntaxTree Tree = Head;\n");
-        if (!safe) save(0);
-        fprintf(output, "\n    debug(\"%s\");\n", node->rule.name);
+        fprintf(output, "%s.Target = ", node->rule.name);
         Node_compile_c_ko(node->rule.expression, ko);
-        if (!safe) {
-            label(ko);
-            printfN_(output, "if (!IsFailed(Tree)) {\n");
-            indent_level += 1;
-            printfN_(output, "return Tree;\n");
-            indent_level -= 1;
-            printfN_(output, "}\n");
-            restore(0);
-            printfN_(output, "return Failed(Context, Tree, \"%s\");\n", node->rule.name);
-        }
-        indent_level -= 1;
-        fprintf(output, "}\n");
+        fprintf(output, ";\n");
     }
 
     if (node->rule.next)
         Rule_compile_green2(node->rule.next);
 }
 
-static char *header= ""
-"class Token {}\n"
-"class NameSpace {}\n"
-"class TokenContext {}\n"
-"class SyntaxPattern {}\n"
-"\n"
-"class SyntaxTree {\n"
-"    constructor(SyntaxTree Parent, NameSpace ns, Token token, SyntaxPattern pattern) {\n"
-"    }\n"
-"}\n"
-"\n"
-"void debug(String message) { println(message); }\n"
-"boolean MatchString(TokenContext Context, String Text) {\n"
-"    debug(Text);\n"
-"    return true;\n"
-"}\n"
-"boolean MatchDot(TokenContext Context) {\n"
-"    return true;\n"
-"}\n"
-"boolean MatchChar(TokenContext Context, String Text) {\n"
-"    debug(Text);\n"
-"    return true;\n"
-"}\n"
-"boolean MatchClass(TokenContext Context, int Class0, int Class1, int Class2, int Class3, int Class4, int Class5, int Class6, int Class7) {\n"
-"    return true;\n"
-"}\n"
-"boolean IsFailed(SyntaxTree Tree) {\n"
-"    return true;\n"
-"}\n"
-"SyntaxTree Failed(TokenContext Context, SyntaxTree Tree) {\n"
-"    return null;\n"
-"}\n"
-"Token GetToken(TokenContext Context) {\n"
-"    return null;\n"
-"}\n"
-"SyntaxTree Failed(TokenContext Context, SyntaxTree Tree, String Text) {\n"
-"    return null;\n"
-"}\n"
-"void AppendParsedTree(SyntaxTree Parent, SyntaxTree Tree) {\n"
-"}\n"
-;
 
 void Rule_compile_green_header(void)
 {
     fprintf(output, "/* A recursive-descent parser generated by peg %d.%d.%d */\n", PEG_MAJOR, PEG_MINOR, PEG_LEVEL);
     fprintf(output, "\n");
-    fprintf(output, "%s", header);
-    //fprintf(output, "#define YYRULECOUNT %d\n", ruleCount);
 }
 
 int consumeInput2(Node *node)
@@ -571,7 +306,7 @@ int consumeInput2(Node *node)
     case Alternate:
                        {
                            Node *n;
-                           for (n= node->alternate.first;  n;  n= n->alternate.next)
+                           for (n = node->alternate.first; n; n = n->alternate.next)
                                if (!consumeInput2(n))
                                    return 0;
                        }
@@ -580,7 +315,7 @@ int consumeInput2(Node *node)
     case Sequence:
                        {
                            Node *n;
-                           for (n= node->alternate.first;  n;  n= n->alternate.next)
+                           for (n = node->alternate.first; n; n = n->alternate.next)
                                if (consumeInput2(n))
                                    return 1;
                        }
@@ -604,21 +339,29 @@ void Rule_compile_green(Node *node)
 {
     Node *n;
 
-    for (n= rules;  n;  n= n->rule.next) {
+    for (n = actions; n; n = n->action.list) {
+        fprintf(output, "class YY%s implements Transformer<T1, T2> {\n", n->action.name);
+        fprintf(output, "\t@Override\n");
+        fprintf(output, "\tpublic T2 apply(final T1 param) {\n");
+        fprintf(output, "\t\t%s;\n", n->action.text);
+        fprintf(output, "\t}\n");
+        fprintf(output, "}\n");
+    }
+
+    fprintf(output, "class %sParser {\n", start->rule.name);
+    fprintf(output, "\tpublic static Parser<Object> NewInstance() {\n");
+    for (n = node; n; n = n->rule.next) {
+        fprintf(output, "SymbolParser<Object> %s = symbol(null); /* %d */\n", n->rule.name, n->rule.id);
+    }
+    fprintf(output, "\n");
+
+
+    for (n = rules; n; n = n->rule.next) {
         consumeInput2(n);
     }
 
-    for (n= node;  n;  n= n->rule.next) {
-        fprintf(output, "SyntaxTree yy_%s(" ARGS "); /* %d */\n", n->rule.name, n->rule.id);
-    }
-    fprintf(output, "\n");
-    for (n= actions;  n;  n= n->action.list) {
-        fprintf(output, "SyntaxTree yy%s(" ARGS ") {\n", n->action.name);
-        //defineVariables(n->action.rule->rule.variables);
-        fprintf(output, "%s;\n", n->action.text);
-        //undefineVariables(n->action.rule->rule.variables);
-        fprintf(output, "}\n");
-    }
     Rule_compile_green2(node);
-    //fprintf(output, footer, start->rule.name);
+    fprintf(output, "\t\treturn %s;\n", start->rule.name);
+    fprintf(output, "\t}\n");
+    fprintf(output, "}\n");
 }
