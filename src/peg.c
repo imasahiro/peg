@@ -114,9 +114,9 @@ int main(int argc, char **argv)
                 usage(basename(argv[0]));
                 break;
 
-            //case 'g':
-            //    greenteaMode = 1;
-            //    break;
+            case 'g':
+                greenteaMode = 1;
+                break;
             case 'o':
                 if (!(output= fopen(optarg, "w")))
                 {
@@ -171,9 +171,9 @@ int main(int argc, char **argv)
             Rule_print(n);
 
     if (greenteaMode == 1) {
-        //Rule_compile_green_header();
-        //if (rules)
-        //    Rule_compile_green(rules);
+        Rule_compile_green_header();
+        if (rules)
+            Rule_compile_green(rules);
     } else {
         Rule_compile_c_header();
         if (rules) Rule_compile_c(rules);
