@@ -30,6 +30,55 @@
 #include "version.h"
 #include "tree.h"
 
+static char *buffer = NULL;
+static int bufpos = -1;
+static int buflen = -1;
+
+static void clearbuffer() {
+    free(buffer);
+    bufpos = buflen = -1;
+    buffer = NULL;
+}
+
+static void makebuffer() {
+    if (buffer) {
+        clearbuffer();
+    }
+    buflen = 1024;
+    buffer = malloc(buflen);
+    bufpos = 0;
+}
+
+static void expandbuf(int length) {
+    while (buflen - bufpos < length + 1) {
+        buflen *= 2;
+        buffer = realloc(buffer, buflen);
+    }
+    memset(buffer + bufpos, 0, buflen - bufpos);
+}
+
+static void insert(const char *fmt) {
+    char tmp[buflen + 1];
+    memcpy(tmp, buffer, buflen);
+    expandbuf(strlen(fmt));
+    memcpy(buffer, fmt, strlen(fmt));
+    memcpy(buffer + strlen(fmt), tmp, bufpos);
+    bufpos += strlen(fmt);
+}
+
+static void writebuf(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    char tmp[1024];
+    int len = vsprintf(tmp, fmt, ap);
+    va_end(ap);
+    expandbuf(len + 1);
+    memcpy(buffer + bufpos, tmp, len);
+    assert(bufpos + len = strlen(buffer));
+    bufpos += len;
+}
+
+
 static int yyl(void)
 {
     static int prev= 0;
@@ -158,83 +207,86 @@ static void Node_compile_c_ko(Node *node, int ko)
         break;
 
     case Dot:
-        fprintf(output, "any");
+        writebuf("any");
         break;
 
     case Name:
-        fprintf(output, "%s", node->name.rule->rule.name);
+        writebuf("%s", node->name.rule->rule.name);
         return;
 
     case Character:
     case String:
-        fprintf(output, "string(\"%s\")", node->string.value);
+        writebuf("string(\"%s\")", node->string.value);
         break;
 
     case Class:
-        fprintf(output, "charctor(\"%s\")", makeCharClass(node->cclass.value));
+        writebuf("charctor(\"%s\")", makeCharClass(node->cclass.value));
         break;
 
     case Action:
-        fprintf(output, "apply(new YY%s())", node->action.name);
-        break;
+        {
+            insert("seq(apply(");
+            bufpos -= 2;
+            writebuf("),");
+            writebuf("new YY%s())", node->action.name);
+            break;
+        }
 
     case Predicate:
-        fprintf(output, "predicate:%s", node->action.text);
+        writebuf("predicate:%s", node->action.text);
         break;
 
     case Error:
         break;
 
     case Alternate:
-        fprintf(output, "or(");
+        writebuf("or(");
         for (node= node->alternate.first; node; node= node->alternate.next) {
-            if (i != 0) { fprintf(output, ", "); }
+            if (i != 0) { writebuf(", "); }
             Node_compile_c_ko(node, ko);
             i++;
         }
-        fprintf(output, ")");
+        writebuf(")");
         break;
 
     case Sequence:
-        fprintf(output, "seq(");
+        writebuf("seq(");
         for (node= node->sequence.first; node; node= node->sequence.next) {
-            if (i != 0) { fprintf(output, ", "); }
+            if (i != 0) { writebuf(", "); }
             Node_compile_c_ko(node, ko);
             i++;
         }
-        fprintf(output, ")");
+        writebuf(")");
         break;
 
     case PeekFor:
-        fprintf(output, "peekfor(");
+        writebuf("peekfor(");
         Node_compile_c_ko(node->peekFor.element, ko);
-        fprintf(output, ")");
+        writebuf(")");
         break;
 
     case PeekNot:
-        fprintf(output, "not(");
+        writebuf("not(");
         Node_compile_c_ko(node->star.element, ok);
-        fprintf(output, ")");
+        writebuf(")");
         break;
 
     case Query:
-        fprintf(output, "query(");
+        writebuf("opt(");
         Node_compile_c_ko(node->star.element, qok);
-        fprintf(output, ")");
+        writebuf(")");
         break;
 
     case Star:
-        fprintf(output, "repeat(");
+        writebuf("repeat(");
         Node_compile_c_ko(node->star.element, out);
-        fprintf(output, ")");
+        writebuf(")");
         break;
 
     case Plus:
-        fprintf(output, "repeat1(");
+        writebuf("repeat1(");
         Node_compile_c_ko(node->plus.element, ko);
-        fprintf(output, ",");
-        Node_compile_c_ko(node->star.element, out);
-        fprintf(output, ")");
+        writebuf(")");
         break;
 
     default:
@@ -259,8 +311,10 @@ static void Rule_compile_green2(Node *node)
         safe= ((Query == node->rule.expression->type) || (Star == node->rule.expression->type));
 
         fprintf(output, "%s.Target = ", node->rule.name);
+        makebuffer();
         Node_compile_c_ko(node->rule.expression, ko);
-        fprintf(output, ";\n");
+        fprintf(output, "%s;\n", buffer);
+        clearbuffer();
     }
 
     if (node->rule.next)
@@ -343,7 +397,7 @@ void Rule_compile_green(Node *node)
         fprintf(output, "class YY%s implements Transformer<T1, T2> {\n", n->action.name);
         fprintf(output, "\t@Override\n");
         fprintf(output, "\tpublic T2 apply(final T1 param) {\n");
-        fprintf(output, "\t\t%s;\n", n->action.text);
+        fprintf(output, "\t\t%s\n", n->action.text);
         fprintf(output, "\t}\n");
         fprintf(output, "}\n");
     }
